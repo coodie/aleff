@@ -15,9 +15,10 @@ Inductive typ (W : world) (TV : Set) : Set :=
 | t_base     : W.(w_base_t) → typ W TV
 | t_effect   : W.(w_effect_t) → typ W TV
 | t_row_nil  : typ W TV
-| t_row_cons : typ W TV → typ W TV → typ W TV
-| t_arrow    : typ W TV → typ W TV → typ W TV → typ W TV
+| t_row_cons : typ W TV
+| t_arrow    : typ W TV
 | t_forall   : kind → typ W (inc TV) → typ W TV
+| t_app      : typ W TV → typ W TV → typ W TV
 .
 
 Inductive expr (W : world) (TV : Set) (V : Set) : Type :=
@@ -27,6 +28,7 @@ Inductive expr (W : world) (TV : Set) (V : Set) : Type :=
 | e_tapp   : expr W TV V → typ W TV → expr W TV V
 | e_open   : expr W TV V → typ W TV → expr W TV V
 | e_handle : ∀ l : W.(w_effect_t),
+    list (typ W TV) →
     expr W TV V →
     handler W TV V (W.(w_eff_op_t) l) →
     expr W TV V

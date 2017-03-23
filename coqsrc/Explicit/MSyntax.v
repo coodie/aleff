@@ -76,3 +76,23 @@ Arguments h_return [W] [TV] [V] _.
 Arguments h_op     [W] [TV] [V] _ _.
 
 Coercion e_value : value >-> expr.
+
+Definition tsubst_t {W : world} {TV : Set} :
+  typ W (inc TV) → typ W TV → typ W TV.
+Admitted.
+
+Definition tsubst_e {W : world} {TV V : Set} :
+  expr W (inc TV) V → typ W TV → expr W TV V.
+Admitted.
+
+Definition tsubst_v {W : world} {TV V : Set} :
+  value W (inc TV) V → typ W TV → value W TV V.
+Admitted.
+
+Definition subst_e {W : world} {TV V : Set} :
+  expr W TV (inc V) → value W TV V → expr W TV V.
+Admitted.
+
+Definition subst_v {W : world} {TV V : Set} :
+  value W TV (inc V) → value W TV V → value W TV V.
+Admitted.

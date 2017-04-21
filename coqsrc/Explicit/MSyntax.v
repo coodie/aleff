@@ -7,32 +7,33 @@ Record world : Type :=
   ; w_eff_op_t : w_effect_t → Set
   ; w_base_t   : Set
   ; w_base_v   : w_base_t → Set
-  ; w_primop   : Set
   }.
 
 Inductive typ (W : world) (TV : Set) : Set :=
 | t_var      : TV → typ W TV
 | t_base     : W.(w_base_t) → typ W TV
-| t_effect   : W.(w_effect_t) → typ W TV
+| t_effect   : W.(w_effect_t) → list (typ W TV) → typ W TV
 | t_row_nil  : typ W TV
-| t_row_cons : typ W TV
-| t_arrow    : typ W TV
+| t_row_cons : typ W TV → typ W TV → typ W TV
+| t_arrow    : typ W TV → typ W TV → typ W TV → typ W TV
 | t_forall   : kind → typ W (inc TV) → typ W TV
-| t_app      : typ W TV → typ W TV → typ W TV
 .
 
-Arguments t_var      [W] [TV] _.
-Arguments t_base     [W] [TV] _.
-Arguments t_effect   [W] [TV] _.
+Arguments t_var      [W] [TV].
+Arguments t_base     [W] [TV].
+Arguments t_effect   [W] [TV].
 Arguments t_row_nil  [W] [TV].
 Arguments t_row_cons [W] [TV].
 Arguments t_arrow    [W] [TV].
-Arguments t_forall   [W] [TV] _ _.
-Arguments t_app      [W] [TV] _ _.
+Arguments t_forall   [W] [TV].
 
-Notation t_arrow' σ ε τ := (t_app (t_app (t_app t_arrow σ) ε) τ).
-Notation "'〈' x ';' .. ';' y '/' z '〉'" :=
-  (t_app (t_app t_row_cons x) .. (t_app (t_app t_row_cons y) z) .. ).
+Notation "σ ==>[ ε ] τ" := (t_arrow σ ε τ) (at level 20).
+Notation "〈〉" := t_row_nil.
+Notation "〈 x ; .. ; y 〉" :=
+  (t_row_cons x .. (t_row_cons y t_row_nil) .. ).
+Notation "〈 x , .. , y | z 〉" :=
+  (t_row_cons x .. (t_row_cons y z) .. ).
+
 
 Inductive expr (W : world) (TV : Set) (V : Set) : Type :=
 | e_value  : value W TV V → expr W TV V
@@ -45,9 +46,9 @@ Inductive expr (W : world) (TV : Set) (V : Set) : Type :=
     expr W TV V →
     handler W TV V (W.(w_eff_op_t) l) →
     expr W TV V
-| e_primop : W.(w_primop) → list (value W TV V) → expr W TV V
 with value (W : world) (TV : Set) (V : Set) : Type :=
 | v_var    : V → value W TV V
+| v_const  : ∀ b : W.(w_base_t), W.(w_base_v) b → value W TV V
 | v_eff_op : ∀ l : W.(w_effect_t), W.(w_eff_op_t) l → value W TV V
 | v_lam    : typ W TV → expr W TV (inc V) → typ W TV → value W TV V
 | v_tlam   : kind → value W (inc TV) V → value W TV V
@@ -59,21 +60,21 @@ with handler (W : world) (TV : Set) (V : Set) : Set → Type :=
     handler W TV V (inc Op)
 .
 
-Arguments e_value  [W] [TV] [V] _.
-Arguments e_let    [W] [TV] [V] _ _.
-Arguments e_app    [W] [TV] [V] _ _.
-Arguments e_tapp   [W] [TV] [V] _ _.
-Arguments e_open   [W] [TV] [V] _ _.
-Arguments e_handle [W] [TV] [V] _ _ _ _.
-Arguments e_primop [W] [TV] [V] _ _.
+Arguments e_value  [W] [TV] [V].
+Arguments e_let    [W] [TV] [V].
+Arguments e_app    [W] [TV] [V].
+Arguments e_tapp   [W] [TV] [V].
+Arguments e_open   [W] [TV] [V].
+Arguments e_handle [W] [TV] [V].
 
-Arguments v_var    [W] [TV] [V] _.
-Arguments v_eff_op [W] [TV] [V] _ _.
-Arguments v_lam    [W] [TV] [V] _ _ _.
-Arguments v_tlam   [W] [TV] [V] _ _.
+Arguments v_var    [W] [TV] [V].
+Arguments v_const  [W] [TV] [V].
+Arguments v_eff_op [W] [TV] [V].
+Arguments v_lam    [W] [TV] [V].
+Arguments v_tlam   [W] [TV] [V].
 
-Arguments h_return [W] [TV] [V] _.
-Arguments h_op     [W] [TV] [V] _ _.
+Arguments h_return [W] [TV] [V].
+Arguments h_op     [W] [TV] [V].
 
 Coercion e_value : value >-> expr.
 
@@ -95,4 +96,12 @@ Admitted.
 
 Definition subst_v {W : world} {TV V : Set} :
   value W TV (inc V) → value W TV V → value W TV V.
+Admitted.
+
+Definition subst_e2_h {W : world} {TV V : Set} :
+  expr W TV (inc2_h V) → value W TV V → value W TV V → expr W TV V.
+Admitted.
+
+Definition subst_v2 {W : world} {TV V : Set} :
+  value W TV (inc2_h V) → value W TV V → value W TV V → value W TV V.
 Admitted.

@@ -9,6 +9,14 @@ Record world : Type :=
   ; w_base_v   : w_base_t → Set
   }.
 
+Example Empty_world : world := 
+{|
+  w_effect_t := Empty_set ;
+  w_eff_op_t := λ _, Empty_set ;
+  w_base_t := Empty_set ;
+  w_base_v := λ _, Empty_set
+|}.
+
 Inductive typ (W : world) (TV : Set) : Set :=
 | t_var      : TV → typ W TV
 | t_base     : W.(w_base_t) → typ W TV
@@ -19,13 +27,19 @@ Inductive typ (W : world) (TV : Set) : Set :=
 | t_forall   : kind → typ W (inc TV) → typ W TV
 .
 
-Arguments t_var      [W] [TV].
-Arguments t_base     [W] [TV].
-Arguments t_effect   [W] [TV].
+Example first_var : typ Empty_world (inc Empty_set).
+Proof.
+  apply t_var.
+  apply VZ.
+Qed.
+
+Arguments t_var      [W] [TV] _.
+Arguments t_base     [W] [TV] _.
+Arguments t_effect   [W] [TV] _ _.
 Arguments t_row_nil  [W] [TV].
-Arguments t_row_cons [W] [TV].
-Arguments t_arrow    [W] [TV].
-Arguments t_forall   [W] [TV].
+Arguments t_row_cons [W] [TV] _ _.
+Arguments t_arrow    [W] [TV] _ _ _.
+Arguments t_forall   [W] [TV] _ _.
 
 Notation "σ ==>[ ε ] τ" := (t_arrow σ ε τ) (at level 20).
 Notation "〈〉" := t_row_nil.
@@ -60,21 +74,21 @@ with handler (W : world) (TV : Set) (V : Set) : Set → Type :=
     handler W TV V (inc Op)
 .
 
-Arguments e_value  [W] [TV] [V].
-Arguments e_let    [W] [TV] [V].
-Arguments e_app    [W] [TV] [V].
-Arguments e_tapp   [W] [TV] [V].
-Arguments e_open   [W] [TV] [V].
-Arguments e_handle [W] [TV] [V].
+Arguments e_value  [W] [TV] [V] _.
+Arguments e_let    [W] [TV] [V] _ _.
+Arguments e_app    [W] [TV] [V] _ _.
+Arguments e_tapp   [W] [TV] [V] _ _.
+Arguments e_open   [W] [TV] [V] _ _.
+Arguments e_handle [W] [TV] [V] _ _ _ _.
 
-Arguments v_var    [W] [TV] [V].
-Arguments v_const  [W] [TV] [V].
-Arguments v_eff_op [W] [TV] [V].
-Arguments v_lam    [W] [TV] [V].
-Arguments v_tlam   [W] [TV] [V].
+Arguments v_var    [W] [TV] [V] _.
+Arguments v_const  [W] [TV] [V] _ _.
+Arguments v_eff_op [W] [TV] [V] _ _.
+Arguments v_lam    [W] [TV] [V] _ _ _.
+Arguments v_tlam   [W] [TV] [V] _ _.
 
-Arguments h_return [W] [TV] [V].
-Arguments h_op     [W] [TV] [V].
+Arguments h_return [W] [TV] [V] _.
+Arguments h_op     [W] [TV] [V] _ _ _.
 
 Coercion e_value : value >-> expr.
 

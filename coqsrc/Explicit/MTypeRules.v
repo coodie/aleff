@@ -41,8 +41,8 @@ Theorem k_eff_row_ind {W : world} {TV : Set} : forall (P : typ W TV -> Prop),
   forall ε : typ W TV, ε ::: k_eff_row -> P ε.
 Proof.
   intros P base step.
-  induction ε;
-  intros H; inversion H.
+  induction ε ;
+  intros H ; inversion H.
   + apply base.
   + subst. clear IHε1.
     assert(IH:= IHε2 P base step H3).
@@ -147,6 +147,7 @@ Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V):
     ε'  ::: k_eff_row ->
     Γ,+ σ_1 ⊢ e ∈ σ | ε -> 
     Γ ⊢ v_lam σ_1 e STH ∈ σ_1 ==>[ε] σ | ε'
+
 | T_App : forall (e_1 e_2 : expr W TV V) (σ σ_2 ε : typ W TV),
     σ   ::: k_type ->
     σ_2 ::: k_type ->
@@ -154,6 +155,15 @@ Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V):
     Γ ⊢ e_1 ∈ σ_2 ==>[ε] σ | ε ->
     Γ ⊢ e_2 ∈ σ_2 | ε ->
     Γ ⊢ e_app e_1 e_2 ∈ σ | ε
+
+| T_Let : forall (e_1 : expr W TV V) (e_2 : expr W TV (inc V)) (σ σ_2 ε : typ W TV),  
+    σ   ::: k_type ->
+    σ_2 ::: k_type ->
+    ε   ::: k_eff_row ->
+    Γ ⊢ e_1 ∈ σ | ε ->
+    Γ,+ σ ⊢ e_2 ∈ σ_2 | ε ->
+    Γ ⊢ e_let e_1 e_2 ∈ σ | ε
+
 
 (* FILL IN HERE *)
 

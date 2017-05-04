@@ -146,7 +146,7 @@ Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V):
     ε   ::: k_eff_row ->
     ε'  ::: k_eff_row ->
     Γ,+ σ_1 ⊢ e ∈ σ | ε -> 
-    Γ ⊢ v_lam σ_1 e STH ∈ σ_1 ==>[ε] σ | ε'
+    Γ ⊢ v_lam σ_1 e σ ∈ σ_1 ==>[ε] σ | ε'
 
 | T_App : forall (e_1 e_2 : expr W TV V) (σ σ_2 ε : typ W TV),
     σ   ::: k_type ->

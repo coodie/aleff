@@ -5,6 +5,7 @@ Require Import Common.MBinder.
 Record world : Type :=
   { w_effect_t : Set
   ; w_eff_op_t : w_effect_t → Set
+  ; w_eff_ar   : w_effect_t → nat
   ; w_base_t   : Set
   ; w_base_v   : w_base_t → Set
   }.

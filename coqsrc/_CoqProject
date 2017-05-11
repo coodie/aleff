@@ -1,1 +1,7 @@
 -R . Top
+Common/MBinder.v
+Common/Var.v
+Explicit/ExplicitKind.v
+Explicit/ExplicitSyntax.v
+Explicit/MSyntax.v
+Explicit/MTypeRules.v

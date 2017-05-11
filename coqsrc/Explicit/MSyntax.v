@@ -5,17 +5,10 @@ Require Import Common.MBinder.
 Record world : Type :=
   { w_effect_t : Set
   ; w_eff_op_t : w_effect_t → Set
+  ; w_eff_ar   : w_effect_t → nat
   ; w_base_t   : Set
   ; w_base_v   : w_base_t → Set
   }.
-
-Example Empty_world : world := 
-{|
-  w_effect_t := Empty_set ;
-  w_eff_op_t := λ _, Empty_set ;
-  w_base_t := Empty_set ;
-  w_base_v := λ _, Empty_set
-|}.
 
 Inductive typ (W : world) (TV : Set) : Set :=
 | t_var      : TV → typ W TV
@@ -26,12 +19,6 @@ Inductive typ (W : world) (TV : Set) : Set :=
 | t_arrow    : typ W TV → typ W TV → typ W TV → typ W TV
 | t_forall   : kind → typ W (inc TV) → typ W TV
 .
-
-Example first_var : typ Empty_world (inc Empty_set).
-Proof.
-  apply t_var.
-  apply VZ.
-Qed.
 
 Arguments t_var      [W] [TV] _.
 Arguments t_base     [W] [TV] _.

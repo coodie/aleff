@@ -5,3 +5,4 @@ Explicit/ExplicitKind.v
 Explicit/ExplicitSyntax.v
 Explicit/MSyntax.v
 Explicit/MTypeRules.v
+Explicit/MTypeRulesExamples.v

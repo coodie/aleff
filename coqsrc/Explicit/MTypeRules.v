@@ -205,14 +205,24 @@ Example Empty_function {X : Type} (e : Empty_set) : X :=
 
 Notation "∅" := (Empty_function).
 
-Definition env_ext {W:world} {TV : Set} {V :Set}
+Definition env_ext  {W : world} {TV : Set} {V : Set}
  (Γ : env V) (τ : typ W TV) (x : inc V) : typ W TV :=
   match x with
   | VZ   => τ
   | VS y => Γ y
   end.
 
-Notation "Γ ',+' τ" := (@env_ext _ _ _ Γ τ) (at level 45, left associativity).
+Definition env_ext2 {W : world} {TV : Set} {V : Set}
+  (Γ : env V) (τϱ: (typ W TV * typ W TV)) (x : inc2_h V) : typ W TV :=
+  let (τ,ϱ) := τϱ in
+  match x with
+  | V2_arg    => τ
+  | V2_resume => ϱ
+  | V2S y     => Γ y
+  end.
+
+Notation "Γ ',+'  τ"  := (@env_ext  _ _ _ Γ τ ) (at level 45, left associativity).
+Notation "Γ ',++' τϱ" := (@env_ext2 _ _ _ Γ τϱ) (at level 45, left associativity).
 
 Definition inc_type {W:world} {TV : Set} (τ : typ W TV) : typ W (inc TV).
 Admitted.
@@ -231,7 +241,7 @@ Notation "Δ ',*' k" := (@kinding_env_ext _ Δ k) (at level 45, left associativi
 
 Reserved Notation "Γ ';;' Δ '⊢' t '∈' τ '|' ε" (at level 50).
 
-Definition Φ {W:world} (l: W.(w_effect_t)) : (W.(w_eff_op_t) l) → typ W Empty_set.
+Definition Φ {W:world} (TV:Set) (l: W.(w_effect_t)) : Set → (typ W TV * typ W TV).
 Admitted.
 
 Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV → kind): 
@@ -294,7 +304,7 @@ Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV �
     (h : handler W TV V (W.(w_eff_op_t) l))
     (σ_r σ ε : typ W TV),
     length args = W.(w_eff_ar) l →
-    handler_has_type Γ Δ (W.(w_eff_op_t) l) h σ_r σ ε →
+    handler_has_type Γ Δ (W.(w_eff_op_t) l) h l σ_r σ ε →
     Γ ;; Δ ⊢ e ∈ σ_r | 〈t_effect l args|ε〉 →
     Γ ;; Δ ⊢ e_handle l args e h ∈ σ | ε
 
@@ -307,11 +317,16 @@ Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV �
     Γ ;; Δ  ⊢ e_let e₁ e₂ ∈ σ | ε
 
 with handler_has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV → kind):
-  forall (Op : Set), handler W TV V Op → typ W TV → typ W TV → typ W TV → Prop :=
+  ∀ (Op : Set), handler W TV V Op → W.(w_effect_t) → typ W TV → typ W TV → typ W TV → Prop :=
 
-| HT_return : forall (l : W.(w_effect_t)) (e : expr W TV (inc V)) (σ_r σ ε: typ W TV),
+| HT_return : ∀ (l : W.(w_effect_t)) (e : expr W TV (inc V)) (σ_r σ ε: typ W TV),
    Γ,+ σ_r ;; Δ ⊢ e ∈ σ | ε →
-   handler_has_type Γ Δ Empty_set (h_return e) σ_r σ ε
-(* FILL IN HERE *)
+   handler_has_type Γ Δ Empty_set (h_return e) l σ_r σ ε
+
+| HT_op : ∀ (Op : Set) (l : W.(w_effect_t)) (h : handler W TV V Op)
+   (σ_r σ ε: typ W TV) (e_i: expr W TV (inc2_h V)),
+   Γ,++ (let (σ₁,σ₂) := Φ TV l Op in (σ₁,σ₂ ==>[〈〉] σ)) ;; Δ ⊢ e_i ∈ σ | ε →
+   handler_has_type Γ Δ Op h l σ_r σ ε →
+   handler_has_type Γ Δ (inc Op) (h_op Op e_i h) l σ_r σ ε
 
 where "Γ ';;' Δ '⊢' t '∈' τ '|' ε" := (@has_type _ _ _ Γ Δ t τ ε).

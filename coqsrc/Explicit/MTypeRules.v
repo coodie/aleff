@@ -8,6 +8,12 @@ Require Import Coq.Lists.List.
 
 (** ** Row equivalence *)
 
+Inductive row_append {W : world} {TV : Set} : typ W TV → typ W TV → typ W TV → Prop :=
+| row_append_base : ∀ (ε         : typ W TV), row_append 〈〉 ε  ε
+| row_append_step : ∀ (l ε ε' εε': typ W TV), row_append  ε ε' εε' → row_append 〈l|ε〉 ε' 〈l|εε'〉.
+
+Definition closed_row {W : world} {TV : Set} (ε : typ W TV) : Prop := row_append ε 〈〉 ε.
+
 Inductive row_select {W : world} {TV : Set} : typ W TV → typ W TV → typ W TV → Prop :=
 | row_select_head : ∀ (l ε: typ W TV), row_select l 〈l|ε〉 ε
 | row_select_tail : ∀ (l l' ε ε': typ W TV), row_select l ε ε' → row_select l 〈l'|ε〉 〈l'|ε'〉.
@@ -149,10 +155,6 @@ Proof.
   + unfold Transitive. apply req_trans.
 Qed.
 
-Inductive row_append {W : world} {TV : Set} : typ W TV → typ W TV → typ W TV → Prop :=
-| row_append_base : ∀ (ε         : typ W TV), row_append 〈〉 ε  ε
-| row_append_step : ∀ (l ε ε' εε': typ W TV), row_append  ε ε' εε' → row_append 〈l|ε〉 ε' 〈l|εε'〉.
-
 (** ** Proper type rules **)
 
 Reserved Notation "τ ::[ Δ ] k" (at level 60).
@@ -229,10 +231,8 @@ Notation "Δ ',*' k" := (@kinding_env_ext _ Δ k) (at level 45, left associativi
 
 Reserved Notation "Γ ';;' Δ '⊢' t '∈' τ '|' ε" (at level 50).
 
-Fixpoint open_row_with {W:world} {TV : Set} {Δ : TV → kind}
-  (ls: typ W TV) (ls_s : ls ::[Δ] k_eff_row)
-  (ε : typ W TV) (ε_s  : ε  ::[Δ] k_eff_row) : typ W TV.
-Admitted. 
+Definition Φ {W:world} (l: W.(w_effect_t)) : (W.(w_eff_op_t) l) → typ W Empty_set.
+Admitted.
 
 Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV → kind): 
   expr W TV V → typ W TV → typ W TV → Prop :=
@@ -287,6 +287,17 @@ Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV �
     Γ ;; Δ ⊢ e ∈ σ₁ ==>[ls] σ₂ | ε' →
     Γ ;; Δ ⊢ e_open e ε ∈ σ₁ ==>[lsε] σ₂ | ε'
 
+| T_Handle : ∀ 
+    (l : W.(w_effect_t))
+    (args : list (typ W TV))
+    (e : expr W TV V)
+    (h : handler W TV V (W.(w_eff_op_t) l))
+    (σ_r σ ε : typ W TV),
+    length args = W.(w_eff_ar) l →
+(* FILL IN HERE *)
+    Γ ;; Δ ⊢ e ∈ σ_r | 〈t_effect l args|ε〉 →
+    Γ ;; Δ ⊢ e_handle l args e h ∈ σ | ε
+
 | T_Let : ∀ (e₁ : expr W TV V) (e₂ : expr W TV (inc V)) (σ σ₂ ε : typ W TV),  
     σ  ::[Δ] k_type →
     σ₂ ::[Δ] k_type →
@@ -294,7 +305,5 @@ Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV �
     Γ ;; Δ  ⊢ e₁ ∈ σ | ε →
     Γ,+ σ ;; Δ  ⊢ e₂ ∈ σ₂ | ε →
     Γ ;; Δ  ⊢ e_let e₁ e₂ ∈ σ | ε
-
-(* FILL IN HERE *)
 
 where "Γ ';;' Δ '⊢' t '∈' τ '|' ε" := (@has_type _ _ _ Γ Δ t τ ε).

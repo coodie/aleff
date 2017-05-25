@@ -316,6 +316,9 @@ Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV �
     Γ,+ σ ;; Δ  ⊢ e₂ ∈ σ₂ | ε →
     Γ ;; Δ  ⊢ e_let e₁ e₂ ∈ σ | ε
 
+| T_Op : ∀ (l : W.(w_effect_t)) (op: W.(w_eff_op_t) l) (args : list (typ W TV)),
+    Γ ;; Δ  ⊢ v_eff_op l op ∈ (let (σ₁,σ₂) := Φ TV l (W.(w_eff_op_t) l) in σ₁ ==>[〈t_effect l args〉] σ₂) | 〈〉
+
 with handler_has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV → kind):
   ∀ (Op : Set), handler W TV V Op → W.(w_effect_t) → typ W TV → typ W TV → typ W TV → Prop :=
 
@@ -326,7 +329,7 @@ with handler_has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV
 | HT_op : ∀ (Op : Set) (l : W.(w_effect_t)) (h : handler W TV V Op)
    (σ_r σ ε: typ W TV) (e_i: expr W TV (inc2_h V)),
    Γ,++ (let (σ₁,σ₂) := Φ TV l Op in (σ₁,σ₂ ==>[〈〉] σ)) ;; Δ ⊢ e_i ∈ σ | ε →
-   handler_has_type Γ Δ Op h l σ_r σ ε →
+   handler_has_type Γ Δ      Op               h  l σ_r σ ε →
    handler_has_type Γ Δ (inc Op) (h_op Op e_i h) l σ_r σ ε
 
 where "Γ ';;' Δ '⊢' t '∈' τ '|' ε" := (@has_type _ _ _ Γ Δ t τ ε).

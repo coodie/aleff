@@ -57,6 +57,7 @@ Example Example_world : world :=
 |}.
 
 Example Example_program := expr Example_world Empty_set Empty_set.
+Example Example_typ := typ Example_world Empty_set.
 
 Example print_H : Example_program.
 Proof.
@@ -95,4 +96,18 @@ Proof.
       apply v_var.
       apply VZ. } }
 Defined.
-  
+
+Example Example_bt (b : Example_base_type) : Example_typ.
+Proof.
+  apply t_base.
+  apply b.
+Defined.
+
+Example IO_effect_row : Example_typ.
+Proof.
+  apply t_row_cons.
+  { apply t_effect.
+    + apply IO_effect.
+    + apply nil. }
+  apply 〈〉.
+Defined.

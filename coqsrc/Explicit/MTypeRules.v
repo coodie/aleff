@@ -28,29 +28,27 @@ Proof.
   + exists l'. exists ε0. auto.
 Qed.
 
-Lemma row_select_comm {W : world} {TV : Set} : ∀ (l l' ε ε' ε'' : typ W TV),
+Lemma row_select_comm {W : world} {TV : Set} : ∀ (l ε  ε' l' ε'': typ W TV) ,
   row_select l  ε  ε'  →
   row_select l' ε' ε'' →
   ∃ ε1,
   row_select l' ε  ε1  ∧
   row_select l  ε1 ε''.
 Proof.
-  intros l l' ε ε' ε''.
-  induction ε''; intros.
-  + inversion H0. subst. clear H0.
-    inversion H; subst.
-    - eapply ex_intro.
-      split; [|apply row_select_head].
-      apply row_select_tail.
-      apply row_select_head.
-    - eapply ex_intro.
-      split; [|apply row_select_head].
-      inversion H3. subst.
-      apply row_select_head.
-  + admit.
-  + admit.
-  + admit.
-  + Admitted.  
+  induction ε ; intros ; inversion H ; subst ; clear IHε1.
+  + exists 〈ε1 | ε'' 〉. split.
+    - constructor. exact H0.
+    - constructor.
+  +  inversion H0 ; subst.
+      - exists ε2. split. 
+        * constructor. 
+        * exact H5.
+      - assert (IH := IHε2 l ε'0 l' ε' H5 H6). 
+        destruct IH. destruct H1.
+         exists 〈ε1 | x 〉. split. 
+        * constructor. exact H1.
+        * constructor. exact H2. 
+Qed.
 
 Reserved Notation "ε₁ ≅ ε₂" (at level 40).
 

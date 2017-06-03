@@ -4,7 +4,15 @@ Require Import Explicit.MSyntax.
 Require Import Explicit.ExplicitKind.
 Require Import Coq.Relations.Relation_Definitions.
 Require Import Coq.Classes.Equivalence.
+Require Import Coq.Program.Basics.
 Require Import Coq.Lists.List.
+
+(* temporary definitions from MSyntax.v *)
+
+Definition tmap_t {W : world} {TV TV' : Set} (f : TV → TV') (t : typ W TV) : typ W TV'.
+Admitted.
+
+Notation tshift_t := (tmap_t (@VS _)).
 
 (** ** Row equivalence *)
 
@@ -198,11 +206,6 @@ Qed.
 
 Definition env {W:world} {TV : Set} (V:Set) : Set := V → typ W TV.
 
-Example Empty_function {X : Type} (e : Empty_set) : X := 
-  match e with end.
-
-Notation "∅" := (Empty_function).
-
 Definition env_ext  {W : world} {TV : Set} {V : Set}
  (Γ : env V) (τ : typ W TV) (x : inc V) : typ W TV :=
   match x with
@@ -222,11 +225,8 @@ Definition env_ext2 {W : world} {TV : Set} {V : Set}
 Notation "Γ ',+'  τ"  := (@env_ext  _ _ _ Γ τ ) (at level 45, left associativity).
 Notation "Γ ',++' τϱ" := (@env_ext2 _ _ _ Γ τϱ) (at level 45, left associativity).
 
-Definition inc_type {W:world} {TV : Set} (τ : typ W TV) : typ W (inc TV).
-Admitted.
-
-Definition inc_env {W:world} {TV : Set} {V :Set} (Γ : @env W TV V) (x : V) : typ W (inc TV) :=
-  inc_type (Γ x).
+Definition tshift_env {W:world} {TV : Set} {V :Set} (Γ : @env W TV V) (x : V) : typ W (inc TV) :=
+  (compose tshift_t Γ) x.
 
 Definition kinding_env_ext {TV : Set}
   (Δ:TV → kind) (k : kind) (α : inc TV) : kind :=
@@ -237,53 +237,70 @@ Definition kinding_env_ext {TV : Set}
 
 Notation "Δ ',*' k" := (@kinding_env_ext _ Δ k) (at level 45, left associativity).
 
-Reserved Notation "Γ ';;' Δ '⊢' t '∈' τ '|' ε" (at level 50).
+Definition Operation_types (W:world) := 
+  ∀ (TV:Set) (l:W.(w_effect_t)), (list (typ W TV)) → (W.(w_eff_op_t) l) → 
+    (typ W TV * typ W TV).
 
-Definition Φ {W:world} (TV:Set) (l: W.(w_effect_t)) : Set → (typ W TV * typ W TV).
-Admitted.
+Notation "∅"  := Empty_set.
 
-Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV → kind): 
+Inductive guards_operation : ∀ T, Set → T → Prop  :=
+  | gop_base : ∀ T, guards_operation _ (inc ∅) (VZ:inc T)
+  | gop_step : ∀ T (G_Op:Set) (op:inc T), 
+      guards_operation _      G_Op      op →
+      guards_operation _ (inc G_Op) (VS op).
+
+Reserved Notation "ΦΓΔ '⊢' t '∈' τ '|' ε" (at level 50).
+
+Inductive has_type {W:world} {TV : Set} {V : Set}
+  (Φ : Operation_types W) 
+  (Γ : @env W TV V) (Δ : TV → kind)
+: 
   expr W TV V → typ W TV → typ W TV → Prop :=
 | T_Req : ∀ (e : expr W TV V) (τ ε₁ ε₂:typ W TV),
     ε₁ ≅ ε₂ →
-    Γ ;; Δ ⊢ e ∈ τ | ε₁ →
-    Γ ;; Δ ⊢ e ∈ τ | ε₂
+    (Φ,Γ,Δ) ⊢ e ∈ τ | ε₁ →
+    (Φ,Γ,Δ) ⊢ e ∈ τ | ε₂
 
-| T_Con : ∀ (x : V) (ε : typ W TV) (b : W.(w_base_t)) (v : W.(w_base_v) b),
+| T_Con : ∀ (σ ε : typ W TV) (b : W.(w_base_t)) (v : W.(w_base_v) b),
+    σ = t_base b →
     ε ::[Δ] k_eff_row →
-    Γ ;; Δ ⊢ v_const b v ∈ t_base b | ε
-| T_Var : ∀ (x : V) (ε : typ W TV),
+    (Φ,Γ,Δ) ⊢ v_const b v ∈ σ | ε
+| T_Op : ∀  (ε σ:typ W TV) (l : W.(w_effect_t)) (op: W.(w_eff_op_t) l) (args : list (typ W TV)),
+    σ = (let (σ₁,σ₂) := Φ TV l args op in σ₁ ==>[〈t_effect l args〉] σ₂) →
+    (Φ,Γ,Δ)  ⊢ v_eff_op l op ∈ σ | ε
+| T_Var : ∀ (x: V) (σ ε : typ W TV),
+    σ = Γ x →
     ε ::[Δ] k_eff_row →
-    Γ ;; Δ ⊢ v_var x ∈ (Γ x) | ε
+    (Φ,Γ,Δ) ⊢ v_var x ∈ σ | ε
 
 | T_Lam : ∀ (e : expr W TV (inc V)) (σ σ₁ ε ε': typ W TV),
     σ  ::[Δ] k_type →
     σ₁ ::[Δ] k_type →
     ε  ::[Δ] k_eff_row →
     ε' ::[Δ] k_eff_row →
-    Γ,+ σ₁ ;; Δ  ⊢ e ∈ σ | ε →
-    Γ ;; Δ ⊢ v_lam σ₁ e ε ∈ σ₁ ==>[ε] σ | ε'
+    (Φ,Γ,+σ₁,Δ) ⊢ e ∈ σ | ε →
+    (Φ,Γ    ,Δ) ⊢ v_lam σ₁ e ε ∈ σ₁ ==>[ε] σ | ε'
 
 | T_App : ∀ (e₁ e₂ : expr W TV V) (σ σ₂ ε : typ W TV),
     σ  ::[Δ] k_type →
     σ₂ ::[Δ] k_type →
     ε  ::[Δ] k_eff_row →
-    Γ ;; Δ ⊢ e₁ ∈ σ₂ ==>[ε] σ | ε →
-    Γ ;; Δ ⊢ e₂ ∈ σ₂ | ε →
-    Γ ;; Δ ⊢ e_app e₁ e₂ ∈ σ | ε
+    (Φ,Γ,Δ) ⊢ e₁ ∈ σ₂ ==>[ε] σ | ε →
+    (Φ,Γ,Δ) ⊢ e₂ ∈ σ₂ | ε →
+    (Φ,Γ,Δ) ⊢ e_app e₁ e₂ ∈ σ | ε
 
 | T_TLam : ∀ (e: value W (inc TV) V) (σ: typ W (inc TV)) (ε: typ W TV) (k :kind),
     σ  ::[Δ,* k] k_type  →
     ε  ::[Δ] k_eff_row →
-    inc_env Γ ;; (Δ,* k)  ⊢ e ∈ σ | inc_type ε →
-    Γ ;; Δ ⊢ v_tlam k e ∈ t_forall k σ | ε
+    (Φ,tshift_env Γ,Δ,* k) ⊢ e ∈ σ | tshift_t ε →
+    (Φ,           Γ,Δ    ) ⊢ v_tlam k e ∈ t_forall k σ | ε
 
 | T_TApp : ∀ (e : expr W TV V) (σ₁ ε : typ W TV) (σ : typ W (inc TV)) (k :kind),
     σ₁ ::[Δ] k_type →
     ε  ::[Δ] k_eff_row →
     σ  ::[Δ,* k] k_type →
-    Γ ;; Δ ⊢ e ∈ t_forall k σ | ε →
-    Γ ;; Δ ⊢ e_tapp e σ₁ ∈ tsubst_t σ σ₁ | ε
+    (Φ,Γ,Δ) ⊢ e ∈ t_forall k σ | ε →
+    (Φ,Γ,Δ) ⊢ e_tapp e σ₁ ∈ tsubst_t σ σ₁ | ε
 
 | T_Open : ∀ (e : expr W TV V) (σ₁ σ₂ ls ε lsε ε' : typ W TV),
     ls  ::[Δ] k_eff_row →
@@ -292,8 +309,8 @@ Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV �
     σ₂  ::[Δ] k_type →
     ε'  ::[Δ] k_eff_row →
     row_append ls ε lsε →
-    Γ ;; Δ ⊢ e ∈ σ₁ ==>[ls] σ₂ | ε' →
-    Γ ;; Δ ⊢ e_open e ε ∈ σ₁ ==>[lsε] σ₂ | ε'
+    (Φ,Γ,Δ) ⊢ e ∈ σ₁ ==>[ls] σ₂ | ε' →
+    (Φ,Γ,Δ) ⊢ e_open e ε ∈ σ₁ ==>[lsε] σ₂ | ε'
 
 | T_Handle : ∀ 
     (l : W.(w_effect_t))
@@ -302,32 +319,42 @@ Inductive has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV �
     (h : handler W TV V (W.(w_eff_op_t) l))
     (σ_r σ ε : typ W TV),
     length args = W.(w_eff_ar) l →
-    handler_has_type Γ Δ (W.(w_eff_op_t) l) h l σ_r σ ε →
-    Γ ;; Δ ⊢ e ∈ σ_r | 〈t_effect l args|ε〉 →
-    Γ ;; Δ ⊢ e_handle l args e h ∈ σ | ε
+    handler_has_type Φ Γ Δ (W.(w_eff_op_t) l) h l σ_r σ ε →
+    (Φ,Γ,Δ) ⊢ e ∈ σ_r | 〈t_effect l args|ε〉 →
+    (Φ,Γ,Δ) ⊢ e_handle l args e h ∈ σ | ε
 
 | T_Let : ∀ (e₁ : expr W TV V) (e₂ : expr W TV (inc V)) (σ σ₂ ε : typ W TV),  
     σ  ::[Δ] k_type →
     σ₂ ::[Δ] k_type →
     ε  ::[Δ] k_eff_row →
-    Γ ;; Δ  ⊢ e₁ ∈ σ | ε →
-    Γ,+ σ ;; Δ  ⊢ e₂ ∈ σ₂ | ε →
-    Γ ;; Δ  ⊢ e_let e₁ e₂ ∈ σ | ε
+    (Φ,Γ    ,Δ) ⊢ e₁ ∈ σ | ε →
+    (Φ,Γ,+ σ,Δ) ⊢ e₂ ∈ σ₂ | ε →
+    (Φ,Γ    ,Δ) ⊢ e_let e₁ e₂ ∈ σ | ε
 
-| T_Op : ∀ (l : W.(w_effect_t)) (op: W.(w_eff_op_t) l) (args : list (typ W TV)),
-    Γ ;; Δ  ⊢ v_eff_op l op ∈ (let (σ₁,σ₂) := Φ TV l (W.(w_eff_op_t) l) in σ₁ ==>[〈t_effect l args〉] σ₂) | 〈〉
-
-with handler_has_type {W:world} {TV : Set} {V : Set} (Γ : @env W TV V) (Δ : TV → kind):
-  ∀ (Op : Set), handler W TV V Op → W.(w_effect_t) → typ W TV → typ W TV → typ W TV → Prop :=
+with handler_has_type {W:world} {TV : Set} {V : Set}
+  (Φ : Operation_types W)
+  (Γ : @env W TV V) (Δ : TV → kind)
+:
+  ∀ (Op : Set), handler W TV V Op → W.(w_effect_t) → 
+  typ W TV → typ W TV → typ W TV → Prop :=
 
 | HT_return : ∀ (l : W.(w_effect_t)) (e : expr W TV (inc V)) (σ_r σ ε: typ W TV),
-   Γ,+ σ_r ;; Δ ⊢ e ∈ σ | ε →
-   handler_has_type Γ Δ Empty_set (h_return e) l σ_r σ ε
+   (Φ, Γ,+ σ_r , Δ) ⊢ e ∈ σ | ε →
+   handler_has_type Φ Γ Δ ∅ (h_return e) l σ_r σ ε
 
-| HT_op : ∀ (Op : Set) (l : W.(w_effect_t)) (h : handler W TV V Op)
+| HT_op : ∀ (l : W.(w_effect_t)),
+   let Op := W.(w_eff_op_t) l in ∀
+   (op : Op)
+   (args : list (typ W TV))
+   (G_Op : Set)
+   (h : handler W TV V G_Op)
    (σ_r σ ε: typ W TV) (e_i: expr W TV (inc2_h V)),
-   Γ,++ (let (σ₁,σ₂) := Φ TV l Op in (σ₁,σ₂ ==>[〈〉] σ)) ;; Δ ⊢ e_i ∈ σ | ε →
-   handler_has_type Γ Δ      Op               h  l σ_r σ ε →
-   handler_has_type Γ Δ (inc Op) (h_op Op e_i h) l σ_r σ ε
+   guards_operation Op (inc G_Op) op →
+   (Φ, Γ,++ ( let (σ₁,σ₂) := Φ TV l args op in 
+     (σ₁,σ₂ ==>[ε] σ)),
+     Δ) ⊢ e_i ∈ σ | ε →
+   handler_has_type Φ Γ Δ      G_Op                 h  l σ_r σ ε →
+   handler_has_type Φ Γ Δ (inc G_Op) (h_op G_Op e_i h) l σ_r σ ε
 
-where "Γ ';;' Δ '⊢' t '∈' τ '|' ε" := (@has_type _ _ _ Γ Δ t τ ε).
+where "ΦΓΔ '⊢' t '∈' τ '|' ε" := (@has_type _ _ _ 
+  (fst(fst ΦΓΔ)) (snd(fst ΦΓΔ)) (snd ΦΓΔ) t τ ε).
